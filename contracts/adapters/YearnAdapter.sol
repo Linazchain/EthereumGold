@@ -34,8 +34,29 @@ contract YearnAdapter {
         return vault.deposit(amount, address(this));
     }
 
-    function withdraw(uint256 shares, address receiver) external onlyPool returns (uint256 assets) {
-        return vault.redeem(shares, receiver, address(this));
+    /// @notice Withdraw a specific amount of underlying assets from the Yearn vault
+    /// @param assets The amount of underlying assets to withdraw
+    /// @param receiver Address that will receive the assets
+    /// @return The actual amount of assets withdrawn
+    function withdraw(uint256 assets, address receiver) external onlyPool returns (uint256) {
+        if (assets == 0) return 0;
+
+        uint256 totalVaultAssets = vault.totalAssets();
+        uint256 ourShares = IERC20(address(vault)).balanceOf(address(this));
+
+        if (totalVaultAssets == 0 || ourShares == 0) return 0;
+
+        // Calculate the number of vault shares needed to get `assets` of underlying
+        // We use a slight buffer for rounding (add 1) to avoid under-withdrawal
+        uint256 sharesToRedeem = (assets * ourShares) / totalVaultAssets;
+        if (sharesToRedeem * totalVaultAssets < assets * ourShares) {
+            sharesToRedeem += 1; // ceiling division for safety
+        }
+        if (sharesToRedeem > ourShares) {
+            sharesToRedeem = ourShares;
+        }
+
+        return vault.redeem(sharesToRedeem, receiver, address(this));
     }
 
     function totalBalance() external view returns (uint256) {
