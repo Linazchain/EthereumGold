@@ -39,6 +39,31 @@ function truncate(addr?: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4);
 }
 
+/** Circle with a diagonal strike-through — Liquid Yield logo */
+function LogoMark() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ flexShrink: 0 }}
+    >
+      <circle cx="16" cy="16" r="13" stroke="#F0B90B" strokeWidth="2.5" fill="none" />
+      <line
+        x1="7"
+        y1="25"
+        x2="25"
+        y2="7"
+        stroke="#F0B90B"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -49,7 +74,6 @@ export default function Home() {
   const [referrer, setReferrer] = useState('');
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
 
-  // ─── Reads ───────────────────────────────────────────────
   const { data: totalAssets, refetch: refetchTotalAssets } = useReadContract({
     address: LOCAL_CONTRACTS.assetPool,
     abi: ASSET_POOL_ABI,
@@ -126,7 +150,6 @@ export default function Home() {
     args: address ? [address] : undefined,
   });
 
-  // ─── Writes ──────────────────────────────────────────────
   const {
     writeContract: approveWrite,
     data: approveHash,
@@ -157,7 +180,6 @@ export default function Home() {
   const { isLoading: isConfirmingWithdraw, isSuccess: isWithdrawn } =
     useWaitForTransactionReceipt({ hash: withdrawHash });
 
-  // Refetch + toast after successful txs
   useEffect(() => {
     if (isApproved) {
       showToast('USDC approved successfully', 'success');
@@ -196,7 +218,6 @@ export default function Home() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  // ─── Derived values ──────────────────────────────────────
   const depositFeePct = depositFeeBps !== undefined ? Number(depositFeeBps) / 100 : 1;
   const withdrawFeePct = withdrawFeeBps !== undefined ? Number(withdrawFeeBps) / 100 : 1;
 
@@ -230,13 +251,12 @@ export default function Home() {
 
   const portfolioValue =
     userShares && pricePerShare
-      ? (Number(formatUnits(userShares, DECIMALS)) *
-          Number(formatUnits(pricePerShare, DECIMALS)))
+      ? Number(formatUnits(userShares, DECIMALS)) *
+        Number(formatUnits(pricePerShare, DECIMALS))
       : 0;
 
   const yieldActive = yieldAdapter && yieldAdapter !== zeroAddress;
 
-  // ─── Handlers ────────────────────────────────────────────
   const handleApprove = () => {
     if (!depositAmount || !isConnected) return;
     approveWrite({
@@ -287,7 +307,6 @@ export default function Home() {
     isConfirmingDeposit ||
     isConfirmingWithdraw;
 
-  // ─── Render ──────────────────────────────────────────────
   return (
     <>
       <style jsx global>{`
@@ -299,12 +318,6 @@ export default function Home() {
         }
         .eg-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
         .eg-logo { display: flex; align-items: center; gap: 10px; }
-        .eg-logo-mark {
-          width: 32px; height: 32px; border-radius: 6px;
-          background: linear-gradient(135deg, var(--gold), #8B6914);
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 900; font-size: 15px; color: var(--black);
-        }
         .eg-logo-text { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
         .eg-logo-text span { color: var(--gold); }
         .eg-network {
@@ -337,7 +350,6 @@ export default function Home() {
           padding: 28px; transition: var(--transition);
         }
         .eg-portfolio-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 24px; }
-        .eg-portfolio-value { font-size: 48px; font-weight: 800; letter-spacing: -1.5px; color: var(--gold); line-height: 1.1; }
         .eg-shares-value { font-size: 24px; font-weight: 700; }
         .eg-shares-value .unit { font-size: 14px; font-weight: 500; color: var(--muted); }
         .eg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; padding-top: 20px; border-top: 1px solid var(--border); }
@@ -345,7 +357,7 @@ export default function Home() {
         .eg-stat-value { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
         .eg-stat-value.gold { color: var(--gold); }
         .eg-vault-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 768px) { .eg-vault-actions { grid-template-columns: 1fr; } .eg-portfolio-value { font-size: 36px; } }
+        @media (max-width: 768px) { .eg-vault-actions { grid-template-columns: 1fr; } }
         .eg-panel {
           background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
           padding: 24px; display: flex; flex-direction: column; gap: 16px;
@@ -430,13 +442,12 @@ export default function Home() {
         .eg-ref-note { font-size: 11px; color: var(--muted-2); margin-top: -8px; }
       `}</style>
 
-      {/* Header */}
       <header className="eg-header">
         <div className="eg-container eg-header-inner">
           <div className="eg-logo">
-            <div className="eg-logo-mark">AU</div>
+            <LogoMark />
             <div className="eg-logo-text">
-              Ethereum <span>Gold</span>
+              Liquid <span>Yield</span>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -462,19 +473,15 @@ export default function Home() {
 
       <main className="eg-main">
         <div className="eg-container">
-          {/* Portfolio */}
           <section className="eg-card">
             <div className="eg-section-label">Your Portfolio</div>
             <div className="eg-portfolio-top">
               <div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Total Value</div>
-                <div className="eg-portfolio-value">
-                  {isConnected ? formatUsd(undefined) /* computed below */ : '$0.00'}
-                  {isConnected && (
-                    <span style={{ fontSize: 48, fontWeight: 800, color: 'var(--gold)' }}>
-                      ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  )}
+                <div style={{ fontSize: 48, fontWeight: 800, letterSpacing: '-1.5px', color: 'var(--gold)', lineHeight: 1.1 }}>
+                  {isConnected
+                    ? `$${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '$0.00'}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -513,9 +520,7 @@ export default function Home() {
             )}
           </section>
 
-          {/* Deposit + Withdraw */}
           <section className="eg-vault-actions">
-            {/* Deposit */}
             <div className="eg-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="eg-panel-title gold">Deposit</span>
@@ -604,7 +609,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Withdraw */}
             <div className="eg-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="eg-panel-title">Withdraw</span>
@@ -660,7 +664,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Pool Info */}
           <section className="eg-card">
             <div className="eg-section-label">Pool Information</div>
             <div className="eg-grid" style={{ borderTop: 'none', paddingTop: 0 }}>
@@ -704,7 +707,7 @@ export default function Home() {
 
       <footer className="eg-footer">
         <div className="eg-container">
-          © 2026 Ethereum Gold ·{' '}
+          © 2026 Liquid Yield ·{' '}
           <a href="https://github.com/Linazchain/EthereumGold" target="_blank" rel="noreferrer">
             GitHub
           </a>
