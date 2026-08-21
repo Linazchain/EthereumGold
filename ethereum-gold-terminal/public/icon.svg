@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#0A0A0A"/>
+  <path d="M256 64L96 192v160l160 96 160-96V192L256 64z" fill="#F0B90B" opacity="0.15"/>
+  <path d="M256 160l-80 80v32l80-48 80 48v-32l-80-80z" fill="#F0B90B"/>
+  <text x="256" y="360" text-anchor="middle" font-family="Inter, sans-serif" font-size="48" font-weight="900" fill="#F0B90B">GOLD</text>
+</svg>
