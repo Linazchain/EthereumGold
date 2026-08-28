@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { baseSepolia, hardhat, mainnet, sepolia } from 'wagmi/chains'
+import { avalancheFuji, baseSepolia, hardhat, mainnet, sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
 const queryClient = new QueryClient()
 
 export const config = createConfig({
-  chains: [baseSepolia, sepolia, hardhat, mainnet],
+  chains: [avalancheFuji, baseSepolia, sepolia, hardhat, mainnet],
   connectors: [
     injected({
       shimDisconnect: true,
@@ -17,6 +17,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
+    [avalancheFuji.id]: http('https://api.avax-test.network/ext/bc/C/rpc'),
     [baseSepolia.id]: http('https://sepolia.base.org'),
     [sepolia.id]: http(),
     [hardhat.id]: http(),
