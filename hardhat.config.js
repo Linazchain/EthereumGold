@@ -1,8 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 
 const PK = process.env.PRIVATE_KEY;
-const BASE_SEPOLIA_RPC =
-  process.env.BASE_SEPOLIA_RPC || "https://sepolia.base.org";
+const accounts = PK ? [PK.startsWith("0x") ? PK : `0x${PK}`] : [];
 
 module.exports = {
   solidity: {
@@ -15,14 +14,19 @@ module.exports = {
     },
   },
   networks: {
+    fuji: {
+      url: process.env.FUJI_RPC || "https://api.avax-test.network/ext/bc/C/rpc",
+      accounts,
+      chainId: 43113,
+    },
     baseSepolia: {
-      url: BASE_SEPOLIA_RPC,
-      accounts: PK ? [PK] : [],
+      url: process.env.BASE_SEPOLIA_RPC || "https://sepolia.base.org",
+      accounts,
       chainId: 84532,
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC || "https://ethereum-sepolia-rpc.publicnode.com",
-      accounts: PK ? [PK] : [],
+      accounts,
       chainId: 11155111,
     },
   },
