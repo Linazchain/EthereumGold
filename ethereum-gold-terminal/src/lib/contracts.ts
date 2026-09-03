@@ -1,7 +1,7 @@
 export const CONTRACTS = {
-  assetPool: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9' as `0x${string}`,
-  usdc: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`,
-  referralRegistry: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' as `0x${string}`,
+  assetPool: '0x91784b28c9695db83695B842f22fAE2b6488c0FA' as `0x${string}`,
+  usdc: '0x4CE5C2B51ba50f853629338709DEc4029638717b' as `0x${string}`,
+  referralRegistry: '0xC1ac6b7CB2e5b85Dd77C835819C25092cFA5d4aF' as `0x${string}`,
 };
 
 export const ASSET_POOL_ABI = [
