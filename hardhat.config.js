@@ -4,6 +4,12 @@ const PK = process.env.PRIVATE_KEY;
 const accounts = PK ? [PK.startsWith("0x") ? PK : `0x${PK}`] : [];
 
 module.exports = {
+  networks: {
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
+      accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : []
+    }
+  },
   solidity: {
     version: "0.8.20",
     settings: {

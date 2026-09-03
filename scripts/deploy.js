@@ -128,6 +128,26 @@ export const ERC20_ABI = [
     outputs: [{ name: "", type: "uint256" }]
   }
 ] as const;
+
+export const REFERRAL_REGISTRY_ABI = [
+  {
+    name: "referrerOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [{ name: "", type: "address" }]
+  },
+  {
+    name: "registerReferral",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "referrer", type: "address" }
+    ],
+    outputs: [{ name: "", type: "bool" }]
+  }
+] as const;
 `;
     fs.writeFileSync(frontendContractsPath, contractsConfig);
     console.log("⚡ Dynamic addresses synced to frontend/lib/contracts.ts!");

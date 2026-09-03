@@ -1,8 +1,7 @@
 export const LOCAL_CONTRACTS = {
-  assetPool: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9" as `0x${string}`,
-  usdc: "0x5FbDB2315678afecb367f032d93F642f64180aa3" as `0x${string}`,
-  referralRegistry: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as `0x${string}`,
-  // shareToken is fetched dynamically via assetPool.shareToken()
+  assetPool: "0x91784b28c9695db83695B842f22fAE2b6488c0FA",
+  usdc: "0x4CE5C2B51ba50f853629338709DEc4029638717b",
+  referralRegistry: "0xC1ac6b7CB2e5b85Dd77C835819C25092cFA5d4aF",
 };
 
 export const ASSET_POOL_ABI = [
@@ -12,37 +11,37 @@ export const ASSET_POOL_ABI = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "amount", type: "uint256" },
-      { name: "referrer", type: "address" },
+      { name: "referrer", type: "address" }
     ],
-    outputs: [],
+    outputs: []
   },
   {
     name: "withdraw",
     type: "function",
     stateMutability: "nonpayable",
     inputs: [{ name: "shareAmount", type: "uint256" }],
-    outputs: [],
+    outputs: []
   },
   {
     name: "totalAssets",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }]
   },
   {
     name: "pricePerShare",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }]
   },
   {
     name: "shareToken",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "address" }]
   },
   {
     name: "underlyingAsset",
@@ -124,16 +123,16 @@ export const ERC20_ABI = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
+      { name: "amount", type: "uint256" }
     ],
-    outputs: [{ name: "", type: "bool" }],
+    outputs: [{ name: "", type: "bool" }]
   },
   {
     name: "balanceOf",
     type: "function",
     stateMutability: "view",
     inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }]
   },
   {
     name: "allowance",
