@@ -23,6 +23,9 @@ export const ASSET_POOL_ABI = [
   { name: 'userPayoutWeight', type: 'function', stateMutability: 'view', inputs: [{ name: '', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
   { name: 'totalPayoutWeight', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint256' }] },
   { name: 'positionCount', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] },
+  { name: 'getPosition', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }, { name: 'positionId', type: 'uint256' }], outputs: [
+    { name: 'principal', type: 'uint256' }, { name: 'payoutWeight', type: 'uint256' }, { name: 'multiplierBps', type: 'uint256' }, { name: 'shares', type: 'uint256' }, { name: 'active', type: 'bool' }
+  ] },
 ] as const
 
 export const ERC20_ABI = [
