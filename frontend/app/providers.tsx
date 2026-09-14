@@ -3,16 +3,21 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { hardhat, mainnet } from 'wagmi/chains';
+import { sepolia, hardhat, mainnet } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 
 export const config = createConfig({
-  chains: [hardhat, mainnet],
+  chains: [sepolia, hardhat, mainnet],
   connectors: [injected()],
   transports: {
+    [sepolia.id]: http(
+      process.env.NEXT_PUBLIC_SEPOLIA_RPC ||
+        'https://ethereum-sepolia-rpc.publicnode.com'
+    ),
     [hardhat.id]: http(),
     [mainnet.id]: http(),
   },
+  multiInjectedProviderDiscovery: true,
 });
 
 const queryClient = new QueryClient();
