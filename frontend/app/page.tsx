@@ -8,7 +8,11 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
+  useChainId,
 } from 'wagmi';
+import { sepolia } from 'wagmi/chains';
+import { CHAIN_ID } from '../lib/contracts';
 import { parseUnits, formatUnits, zeroAddress, isAddress } from 'viem';
 import {
   LOCAL_CONTRACTS,
@@ -68,6 +72,14 @@ export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
+
+  const ensureSepolia = async () => {
+    if (chainId !== CHAIN_ID) {
+      await switchChainAsync({ chainId: sepolia.id });
+    }
+  };
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawShares, setWithdrawShares] = useState('');
@@ -257,38 +269,56 @@ export default function Home() {
 
   const yieldActive = yieldAdapter && yieldAdapter !== zeroAddress;
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!depositAmount || !isConnected) return;
-    approveWrite({
-      address: LOCAL_CONTRACTS.usdc,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [LOCAL_CONTRACTS.assetPool, parseUnits(depositAmount, DECIMALS)],
-    });
+    try {
+      await ensureSepolia();
+      approveWrite({
+        address: LOCAL_CONTRACTS.usdc,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [LOCAL_CONTRACTS.assetPool, parseUnits(depositAmount, DECIMALS)],
+        chainId: CHAIN_ID,
+      });
+    } catch (e: any) {
+      showToast(e?.shortMessage || e?.message || 'Approve failed', 'error');
+    }
   };
 
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     if (!depositAmount || !isConnected) return;
-    const ref =
-      referrer && isAddress(referrer)
-        ? (referrer as `0x${string}`)
-        : zeroAddress;
-    depositWrite({
-      address: LOCAL_CONTRACTS.assetPool,
-      abi: ASSET_POOL_ABI,
-      functionName: 'deposit',
-      args: [parseUnits(depositAmount, DECIMALS), ref],
-    });
+    try {
+      await ensureSepolia();
+      const ref =
+        referrer && isAddress(referrer)
+          ? (referrer as `0x${string}`)
+          : zeroAddress;
+      depositWrite({
+        address: LOCAL_CONTRACTS.assetPool,
+        abi: ASSET_POOL_ABI,
+        functionName: 'deposit',
+        args: [parseUnits(depositAmount, DECIMALS), ref],
+        chainId: CHAIN_ID,
+      });
+    } catch (e: any) {
+      showToast(e?.shortMessage || e?.message || 'Deposit failed', 'error');
+    }
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!withdrawShares || !isConnected) return;
-    withdrawWrite({
-      address: LOCAL_CONTRACTS.assetPool,
-      abi: ASSET_POOL_ABI,
-      functionName: 'withdraw',
-      args: [parseUnits(withdrawShares, DECIMALS)],
-    });
+    try {
+      await ensureSepolia();
+      withdrawWrite({
+        address: LOCAL_CONTRACTS.assetPool,
+        abi: ASSET_POOL_ABI,
+        functionName: 'withdraw',
+        args: [parseUnits(withdrawShares, DECIMALS)],
+        chainId: CHAIN_ID,
+      });
+    } catch (e: any) {
+      showToast(e?.shortMessage || e?.message || 'Withdraw failed', 'error');
+    }
   };
 
   const setMaxDeposit = () => {
@@ -453,7 +483,7 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="eg-network">
               <span className="eg-dot" />
-              <span>Local / Mainnet</span>
+              <span>Sepolia</span>
             </div>
             {isConnected ? (
               <button className="eg-btn-connect connected" onClick={() => disconnect()}>
@@ -462,7 +492,10 @@ export default function Home() {
             ) : (
               <button
                 className="eg-btn-connect"
-                onClick={() => connect({ connector: connectors[0] })}
+                onClick={async () => {
+                  connect({ connector: connectors[0] });
+                  try { await switchChainAsync({ chainId: sepolia.id }); } catch {}
+                }}
               >
                 Connect Wallet
               </button>
