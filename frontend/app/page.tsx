@@ -536,7 +536,7 @@ export default function Home() {
                   {isConnected ? formatNum(userShares) : '0.000'}{' '}
                   <span className="unit">GOLD</span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4 }}>
                   {isConnected ? truncate(address) : 'Not connected'}
                 </div>
               </div>
@@ -559,20 +559,15 @@ export default function Home() {
                 <div className="eg-stat-value">{isConnected ? formatNum(userUsdc) : '—'}</div>
               </div>
             </div>
-            {isConnected && myReferrer && myReferrer !== zeroAddress && (
-              <div className="eg-ref-note" style={{ marginTop: 16 }}>
-                Referred by: {truncate(myReferrer)}
-              </div>
-            )}
           </section>
 
-          <section className="eg-vault-actions">
+          <div className="eg-section-label" style={{ marginTop: 8 }}>Vault Actions</div>
+          <div className="eg-vault-actions">
             <div className="eg-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="eg-panel-title gold">Deposit</span>
-                <span className="eg-badge deposit">USDC → GOLD</span>
+                <div className="eg-panel-title gold">Deposit USDC → GOLD</div>
+                <span className="eg-badge deposit">Deposit</span>
               </div>
-
               <div>
                 <div className="eg-input-label">
                   <span>Amount (USDC)</span>
@@ -583,7 +578,6 @@ export default function Home() {
                 <div className="eg-input-wrap">
                   <input
                     className="eg-input"
-                    type="number"
                     placeholder="0.00"
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
@@ -592,7 +586,6 @@ export default function Home() {
                   <span className="eg-symbol">USDC</span>
                 </div>
               </div>
-
               <div>
                 <div className="eg-input-label">
                   <span>Referrer (optional)</span>
@@ -600,67 +593,57 @@ export default function Home() {
                 <div className="eg-input-wrap">
                   <input
                     className="eg-input"
-                    style={{ fontSize: 14, fontWeight: 500 }}
-                    type="text"
                     placeholder="0x..."
                     value={referrer}
                     onChange={(e) => setReferrer(e.target.value)}
                     disabled={!isConnected || isBusy}
+                    style={{ fontSize: 14, fontWeight: 500 }}
                   />
                 </div>
+                {myReferrer && myReferrer !== zeroAddress && (
+                  <div className="eg-ref-note">Your referrer: {truncate(myReferrer)}</div>
+                )}
               </div>
-
               <div className="eg-fee-row">
                 <span>Deposit Fee</span>
-                <span style={{ fontWeight: 600, color: 'var(--white)' }}>{depositFeePct.toFixed(2)}%</span>
+                <span>{depositFeePct.toFixed(2)}%</span>
               </div>
-
               <div className="eg-receive">
                 <span>You will receive</span>
                 <span className="eg-receive-amt gold">
-                  {depositCalc.receive > 0 ? depositCalc.receive.toFixed(4) : '0.000'} GOLD
+                  {depositCalc.receive.toFixed(4)} GOLD
                 </span>
               </div>
-
-              {needsApproval && isConnected && parseFloat(depositAmount) > 0 ? (
+              {!isConnected ? (
+                <button className="eg-btn neutral" disabled>
+                  Connect Wallet First
+                </button>
+              ) : needsApproval ? (
                 <button
                   className="eg-btn outline"
                   onClick={handleApprove}
-                  disabled={isBusy || !!isPaused}
+                  disabled={isBusy || !depositAmount}
                 >
                   {(isApproving || isConfirmingApprove) && <span className="eg-spinner" />}
-                  {isApproving || isConfirmingApprove ? 'Approving...' : 'Approve USDC'}
+                  {isApproving || isConfirmingApprove ? 'Approving…' : 'Approve USDC'}
                 </button>
               ) : (
                 <button
                   className="eg-btn gold"
                   onClick={handleDeposit}
-                  disabled={
-                    !isConnected ||
-                    isBusy ||
-                    !!isPaused ||
-                    !depositAmount ||
-                    parseFloat(depositAmount) <= 0 ||
-                    needsApproval
-                  }
+                  disabled={isBusy || !depositAmount}
                 >
                   {(isDepositing || isConfirmingDeposit) && <span className="eg-spinner" />}
-                  {isDepositing || isConfirmingDeposit
-                    ? 'Depositing...'
-                    : isPaused
-                    ? 'Paused'
-                    : 'Deposit'}
-                  <span>→</span>
+                  {isDepositing || isConfirmingDeposit ? 'Depositing…' : 'Deposit →'}
                 </button>
               )}
             </div>
 
             <div className="eg-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="eg-panel-title">Withdraw</span>
-                <span className="eg-badge withdraw">GOLD → USDC</span>
+                <div className="eg-panel-title">Withdraw GOLD → USDC</div>
+                <span className="eg-badge withdraw">Withdraw</span>
               </div>
-
               <div>
                 <div className="eg-input-label">
                   <span>Shares (GOLD)</span>
@@ -671,7 +654,6 @@ export default function Home() {
                 <div className="eg-input-wrap">
                   <input
                     className="eg-input"
-                    type="number"
                     placeholder="0.00"
                     value={withdrawShares}
                     onChange={(e) => setWithdrawShares(e.target.value)}
@@ -680,39 +662,30 @@ export default function Home() {
                   <span className="eg-symbol gold">GOLD</span>
                 </div>
               </div>
-
               <div className="eg-fee-row">
                 <span>Withdrawal Fee</span>
-                <span style={{ fontWeight: 600, color: 'var(--white)' }}>{withdrawFeePct.toFixed(2)}%</span>
+                <span>{withdrawFeePct.toFixed(2)}%</span>
               </div>
-
               <div className="eg-receive">
                 <span>You will receive</span>
                 <span className="eg-receive-amt">
-                  ${withdrawCalc.receive > 0 ? withdrawCalc.receive.toFixed(2) : '0.00'}
+                  $ {withdrawCalc.receive.toFixed(2)}
                 </span>
               </div>
-
               <button
                 className="eg-btn neutral"
                 onClick={handleWithdraw}
-                disabled={
-                  !isConnected ||
-                  isBusy ||
-                  !withdrawShares ||
-                  parseFloat(withdrawShares) <= 0
-                }
+                disabled={!isConnected || isBusy || !withdrawShares}
               >
                 {(isWithdrawing || isConfirmingWithdraw) && <span className="eg-spinner" />}
-                {isWithdrawing || isConfirmingWithdraw ? 'Withdrawing...' : 'Withdraw'}
-                <span>→</span>
+                {isWithdrawing || isConfirmingWithdraw ? 'Withdrawing…' : 'Withdraw →'}
               </button>
             </div>
-          </section>
+          </div>
 
-          <section className="eg-card">
+          <section className="eg-card" style={{ marginTop: 8 }}>
             <div className="eg-section-label">Pool Information</div>
-            <div className="eg-grid" style={{ borderTop: 'none', paddingTop: 0 }}>
+            <div className="eg-grid">
               <div>
                 <div className="eg-stat-label">TVL</div>
                 <div className="eg-stat-value">{formatUsd(totalAssets)}</div>
@@ -727,25 +700,22 @@ export default function Home() {
               </div>
               <div>
                 <div className="eg-stat-label">Deposit Fee</div>
-                <div className="eg-stat-value" style={{ fontSize: 15 }}>
-                  {depositFeePct.toFixed(2)}%
-                </div>
+                <div className="eg-stat-value">{depositFeePct.toFixed(2)}%</div>
               </div>
               <div>
                 <div className="eg-stat-label">Withdrawal Fee</div>
-                <div className="eg-stat-value" style={{ fontSize: 15 }}>
-                  {withdrawFeePct.toFixed(2)}%
-                </div>
+                <div className="eg-stat-value">{withdrawFeePct.toFixed(2)}%</div>
               </div>
             </div>
             <div className="eg-yield-status">
               <span className={`eg-yield-dot ${yieldActive ? 'active' : 'inactive'}`} />
-              <span>
-                Yield Status:{' '}
-                <strong style={{ color: yieldActive ? 'var(--gold)' : 'var(--muted)' }}>
-                  {yieldActive ? 'Active' : 'Inactive'}
-                </strong>
-              </span>
+              Yield Status:{' '}
+              <strong style={{ color: yieldActive ? 'var(--gold)' : 'var(--muted)' }}>
+                {yieldActive ? 'Active' : 'Inactive'}
+              </strong>
+              {isPaused ? (
+                <span style={{ marginLeft: 12, color: 'var(--danger)', fontWeight: 600 }}>PAUSED</span>
+              ) : null}
             </div>
           </section>
         </div>
@@ -753,17 +723,13 @@ export default function Home() {
 
       <footer className="eg-footer">
         <div className="eg-container">
-          © 2026 Liquid Yield ·{' '}
-          <a href="https://github.com/Linazchain/EthereumGold" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
+          Liquid Yield Protocol · Sepolia Testnet
         </div>
       </footer>
 
       {toast && (
         <div className={`eg-toast ${toast.type}`}>
-          <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '⚠️' : '⚡'}</span>
-          <span>{toast.msg}</span>
+          {toast.msg}
         </div>
       )}
     </>
