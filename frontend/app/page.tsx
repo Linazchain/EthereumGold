@@ -81,6 +81,15 @@ export default function Home() {
     }
   };
 
+  // After wallet connects, move to Sepolia (do not block connect)
+  useEffect(() => {
+    if (!isConnected) return;
+    if (chainId === CHAIN_ID) return;
+    switchChainAsync({ chainId: sepolia.id }).catch(() => {
+      showToast('Please switch wallet to Sepolia', 'error');
+    });
+  }, [isConnected, chainId]);
+
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawShares, setWithdrawShares] = useState('');
   const [referrer, setReferrer] = useState('');
@@ -492,9 +501,13 @@ export default function Home() {
             ) : (
               <button
                 className="eg-btn-connect"
-                onClick={async () => {
-                  connect({ connector: connectors[0] });
-                  try { await switchChainAsync({ chainId: sepolia.id }); } catch {}
+                onClick={() => {
+                  const connector = connectors[0];
+                  if (!connector) {
+                    showToast('No wallet found. Install MetaMask.', 'error');
+                    return;
+                  }
+                  connect({ connector });
                 }}
               >
                 Connect Wallet
