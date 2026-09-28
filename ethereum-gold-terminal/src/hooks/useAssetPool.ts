@@ -170,6 +170,30 @@ export function useAssetPool() {
     ])
   }
 
+  const toN = (v: bigint | undefined) =>
+    v === undefined ? 0 : Number(formatUnits(v, USDC_DECIMALS))
+  const balance = toN(usdcBalance)
+  const shares = toN(userShares)
+  const sharePrice = toN(pricePerShare) || 1
+  const tvl = toN(totalAssets)
+  const payoutWeight = toN(userPayoutWeightRaw)
+  const totalPayoutWeight = toN(totalPayoutWeightRaw)
+  const positionCount = positionCountRaw !== undefined ? Number(positionCountRaw) : 0
+  const multiplierBps = multBps !== undefined ? Number(multBps) : 10000
+  const boostLabel =
+    multiplierBps >= 100000 ? '10×' : multiplierBps >= 50000 ? '5×' : '1×'
+  const boostPct =
+    multiplierBps >= 100000
+      ? '+1,000%'
+      : multiplierBps >= 50000
+        ? '+500%'
+        : 'No Boost'
+  const depositFee = depositFeeBps !== undefined ? Number(depositFeeBps) : 100
+  const withdrawFee = withdrawFeeBps !== undefined ? Number(withdrawFeeBps) : 100
+  const portfolioValue = shares * sharePrice
+  const yieldActive = !!yieldAdapter && yieldAdapter !== zeroAddress
+  const hasReferrer = !!myReferrer && myReferrer !== zeroAddress
+
   const approve = (amount: string) => {
     approveWrite({
       address: CONTRACTS.usdc,
@@ -216,53 +240,20 @@ export function useAssetPool() {
     }
   }
 
-  /** true if amount exceeds wallet USDC */
   const exceedsUsdcBalance = (amount: string) => {
     if (!amount) return false
-    try {
-      const n = parseFloat(amount)
-      if (!(n > 0)) return false
-      return n > balance + 1e-12
-    } catch {
-      return true
-    }
+    const n = parseFloat(amount)
+    if (!(n > 0) || Number.isNaN(n)) return false
+    return n > balance + 1e-12
   }
 
-  /** true if share amount exceeds GOLD balance */
   const exceedsShareBalance = (shareAmount: string) => {
     if (!shareAmount) return false
-    try {
-      const n = parseFloat(shareAmount)
-      if (!(n > 0)) return false
-      return n > shares + 1e-12
-    } catch {
-      return true
-    }
+    const n = parseFloat(shareAmount)
+    if (!(n > 0) || Number.isNaN(n)) return false
+    return n > shares + 1e-12
   }
 
-  const toN = (v: bigint | undefined) =>
-    v === undefined ? 0 : Number(formatUnits(v, USDC_DECIMALS))
-  const balance = toN(usdcBalance)
-  const shares = toN(userShares)
-  const sharePrice = toN(pricePerShare) || 1
-  const tvl = toN(totalAssets)
-  const payoutWeight = toN(userPayoutWeightRaw)
-  const totalPayoutWeight = toN(totalPayoutWeightRaw)
-  const positionCount = positionCountRaw !== undefined ? Number(positionCountRaw) : 0
-  const multiplierBps = multBps !== undefined ? Number(multBps) : 10000
-  const boostLabel =
-    multiplierBps >= 100000 ? '10×' : multiplierBps >= 50000 ? '5×' : '1×'
-  const boostPct =
-    multiplierBps >= 100000
-      ? '+1,000%'
-      : multiplierBps >= 50000
-        ? '+500%'
-        : 'No Boost'
-  const depositFee = depositFeeBps !== undefined ? Number(depositFeeBps) : 100
-  const withdrawFee = withdrawFeeBps !== undefined ? Number(withdrawFeeBps) : 100
-  const portfolioValue = shares * sharePrice
-  const yieldActive = !!yieldAdapter && yieldAdapter !== zeroAddress
-  const hasReferrer = !!myReferrer && myReferrer !== zeroAddress
   const isBusy =
     isApproving ||
     isDepositing ||
@@ -273,20 +264,6 @@ export function useAssetPool() {
     isConfirmingWithdraw ||
     isConfirmingRegister
 
-  const writeErrorMsg =
-    shortError(approveError) !== 'Transaction failed' && approveError
-      ? shortError(approveError)
-      : depositError
-        ? shortError(depositError)
-        : withdrawError
-          ? shortError(withdrawError)
-          : registerError
-            ? shortError(registerError)
-            : switchError
-              ? shortError(switchError)
-              : null
-
-  // Prefer the active error among writes
   const activeWriteError =
     (approveError && shortError(approveError)) ||
     (depositError && shortError(depositError)) ||
