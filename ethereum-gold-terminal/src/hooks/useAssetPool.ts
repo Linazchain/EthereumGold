@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import {
   useAccount,
   useReadContract,
@@ -43,13 +43,17 @@ function shortError(err: unknown): string {
   if (/network|rpc|fetch|timeout/i.test(raw)) {
     return 'Network / RPC error — try again'
   }
+  if (/chain|switch|unrecognized/i.test(raw)) {
+    return 'Could not switch network — open wallet and select Sepolia'
+  }
   return raw.slice(0, 140)
 }
 
 export function useAssetPool() {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
-  const { switchChain, isPending: isSwitching, error: switchError } = useSwitchChain()
+  const { switchChain, switchChainAsync, isPending: isSwitching, error: switchError, reset: resetSwitch } =
+    useSwitchChain()
   const onSepolia = chainId === CHAIN_ID
   const enabled = isConnected && !!address && onSepolia
 
@@ -254,6 +258,19 @@ export function useAssetPool() {
     return n > shares + 1e-12
   }
 
+  const switchToSepolia = useCallback(async () => {
+    try {
+      if (switchChainAsync) {
+        await switchChainAsync({ chainId: CHAIN_ID })
+        return true
+      }
+      switchChain?.({ chainId: CHAIN_ID })
+      return true
+    } catch {
+      return false
+    }
+  }, [switchChain, switchChainAsync])
+
   const isBusy =
     isApproving ||
     isDepositing ||
@@ -279,7 +296,8 @@ export function useAssetPool() {
       chainId,
       onSepolia,
       isSwitching,
-      switchToSepolia: () => switchChain?.({ chainId: CHAIN_ID }),
+      switchToSepolia,
+      switchError: switchError ? shortError(switchError) : null,
       balance,
       shares,
       sharePrice,
@@ -323,6 +341,7 @@ export function useAssetPool() {
         resetDeposit()
         resetWithdraw()
         resetRegister()
+        resetSwitch?.()
       },
       resetApprove,
       resetDeposit,
@@ -341,6 +360,8 @@ export function useAssetPool() {
       chainId,
       onSepolia,
       isSwitching,
+      switchToSepolia,
+      switchError,
       balance,
       shares,
       sharePrice,
