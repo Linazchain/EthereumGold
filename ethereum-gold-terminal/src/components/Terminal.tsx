@@ -42,13 +42,14 @@ export default function Terminal() {
 
   const [depositAmount, setDepositAmount] = useState('')
   const [withdrawShares, setWithdrawShares] = useState('')
-  /** Single referrer field for register + deposit */
   const [referrer, setReferrer] = useState('')
   const [toast, setToast] = useState<{ msg: string; kind: ToastKind; href?: string } | null>(null)
   const [pressed, setPressed] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const lastWriteError = useRef<string | null>(null)
+  const lastSwitchError = useRef<string | null>(null)
   const pendingDepositAfterApprove = useRef(false)
+  const autoSwitchAttempted = useRef(false)
   const depositAmountRef = useRef(depositAmount)
   const referrerRef = useRef(referrer)
   depositAmountRef.current = depositAmount
@@ -57,6 +58,19 @@ export default function Terminal() {
   const showToast = useCallback((msg: string, kind: ToastKind = 'info', href?: string) => {
     setToast({ msg, kind, href })
   }, [])
+
+  const ensureSepolia = useCallback(async () => {
+    if (p.onSepolia) return true
+    const ok = await p.switchToSepolia()
+    if (!ok) {
+      showToast(
+        p.switchError || 'Could not switch to Sepolia — select it in your wallet',
+        'error'
+      )
+      return false
+    }
+    return true
+  }, [p, showToast])
 
   useEffect(() => {
     if (!p.writeError) {
@@ -69,7 +83,16 @@ export default function Terminal() {
     showToast(p.writeError, 'error')
   }, [p.writeError, showToast])
 
-  // Auto-deposit after approve confirms
+  useEffect(() => {
+    if (!p.switchError) {
+      lastSwitchError.current = null
+      return
+    }
+    if (p.switchError === lastSwitchError.current) return
+    lastSwitchError.current = p.switchError
+    showToast(p.switchError, 'error')
+  }, [p.switchError, showToast])
+
   useEffect(() => {
     if (!p.isApproved) return
     const amount = depositAmountRef.current
@@ -83,7 +106,11 @@ export default function Terminal() {
         showToast('USDC approved — depositing…', 'info')
         p.deposit(amount, ref)
       } else {
-        showToast('USDC approved', 'success', p.approveHash ? `${EXPLORER}/tx/${p.approveHash}` : undefined)
+        showToast(
+          'USDC approved',
+          'success',
+          p.approveHash ? `${EXPLORER}/tx/${p.approveHash}` : undefined
+        )
       }
     })
   }, [p.isApproved])
@@ -137,17 +164,25 @@ export default function Terminal() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // One auto-switch attempt per session when wrong network
   useEffect(() => {
-    if (isConnected && !p.onSepolia && !p.isSwitching) {
-      try {
-        p.switchToSepolia()
-      } catch {
-        /* switchError via writeError path */
+    if (!isConnected || p.onSepolia || p.isSwitching || autoSwitchAttempted.current) return
+    autoSwitchAttempted.current = true
+    void (async () => {
+      const ok = await p.switchToSepolia()
+      if (!ok) {
+        showToast(
+          p.switchError || 'Could not auto-switch to Sepolia — use the button below',
+          'error'
+        )
       }
-    }
+    })()
   }, [isConnected, p.onSepolia, p.isSwitching])
 
-  // Prefill single referrer from ?ref=
+  useEffect(() => {
+    if (p.onSepolia) autoSwitchAttempted.current = false
+  }, [p.onSepolia])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const q = new URLSearchParams(window.location.search).get('ref')
@@ -195,13 +230,9 @@ export default function Terminal() {
   const depositTooHigh = p.exceedsUsdcBalance(depositAmount)
   const withdrawTooHigh = p.exceedsShareBalance(withdrawShares)
 
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     p.clearWriteErrors?.()
-    if (!p.onSepolia) {
-      p.switchToSepolia()
-      showToast('Switch to Sepolia', 'error')
-      return
-    }
+    if (!(await ensureSepolia())) return
     if (!depositAmount || p.isBusy || p.paused) return
     if (parseFloat(depositAmount) <= 0) {
       showToast('Enter an amount greater than 0', 'error')
@@ -221,13 +252,9 @@ export default function Terminal() {
     p.deposit(depositAmount, ref)
   }
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     p.clearWriteErrors?.()
-    if (!p.onSepolia) {
-      p.switchToSepolia()
-      showToast('Switch to Sepolia', 'error')
-      return
-    }
+    if (!(await ensureSepolia())) return
     if (!withdrawShares || p.isBusy) return
     if (parseFloat(withdrawShares) <= 0) {
       showToast('Enter shares greater than 0', 'error')
@@ -240,13 +267,9 @@ export default function Terminal() {
     p.withdraw(withdrawShares)
   }
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     p.clearWriteErrors?.()
-    if (!p.onSepolia) {
-      p.switchToSepolia()
-      showToast('Switch to Sepolia', 'error')
-      return
-    }
+    if (!(await ensureSepolia())) return
     if (!referrer || !isAddress(referrer)) {
       showToast('Enter a valid referrer address', 'error')
       return
@@ -333,11 +356,25 @@ export default function Terminal() {
         <div className="max-w-lg mx-auto px-4 pt-4">
           <div className="rounded-xl border border-gold/30 bg-gold/10 p-4 flex flex-col gap-3">
             <p className="text-sm text-gold">
-              Wrong network — switch to <strong>Sepolia</strong>.
+              Wrong network — switch to <strong>Sepolia</strong> (chain ID 11155111).
             </p>
+            {p.switchError && (
+              <p className="text-xs text-red-400">{p.switchError}</p>
+            )}
             <button
               type="button"
-              onClick={() => p.switchToSepolia()}
+              onClick={async () => {
+                const ok = await p.switchToSepolia()
+                if (!ok) {
+                  showToast(
+                    p.switchError ||
+                      'Switch failed — open your wallet and select Sepolia manually',
+                    'error'
+                  )
+                } else {
+                  showToast('Switched to Sepolia', 'success')
+                }
+              }}
               disabled={p.isSwitching}
               className="py-3 bg-gold text-black font-bold rounded-xl flex items-center justify-center gap-2"
             >
@@ -354,7 +391,6 @@ export default function Terminal() {
       )}
 
       <main className="px-4 pb-10 max-w-lg mx-auto">
-        {/* Withdrawable (actual) */}
         <section className="py-8 text-center">
           <div className="text-xs text-muted mb-1 tracking-wider">WITHDRAWABLE (ACTUAL)</div>
           <div className="text-[10px] text-muted-2 mb-2">Share value · not boost weight</div>
@@ -399,12 +435,15 @@ export default function Terminal() {
           </button>
         </section>
 
-        {/* Referral / boost */}
         <section className="mb-8 rounded-xl border border-gold/20 bg-gradient-to-b from-gold/10 to-transparent p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="text-xs text-muted tracking-wider">REFERRAL STATUS</div>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-muted">
-              {p.isReferred ? 'Referred (10× new deposits)' : p.isReferrer ? 'Referrer (5×)' : 'Normal (1×)'}
+              {p.isReferred
+                ? 'Referred (10× new deposits)'
+                : p.isReferrer
+                  ? 'Referrer (5×)'
+                  : 'Normal (1×)'}
             </span>
           </div>
           <div className="flex items-baseline justify-between">
@@ -489,7 +528,6 @@ export default function Terminal() {
           )}
         </section>
 
-        {/* Deposit */}
         <section className="mb-8">
           <label className="block text-xs text-muted mb-2">AMOUNT (USDC)</label>
           <div className="bg-white/5 rounded-xl p-4">
@@ -557,7 +595,6 @@ export default function Terminal() {
           </button>
         </section>
 
-        {/* Withdraw */}
         <section className="mb-8">
           <label className="block text-xs text-muted mb-2">SHARES (GOLD)</label>
           <div className="bg-white/5 rounded-xl p-4">
