@@ -20,10 +20,36 @@ import {
   SHARE_DECIMALS,
 } from '@/lib/contracts'
 
+function shortError(err: unknown): string {
+  if (!err) return 'Transaction failed'
+  const e = err as {
+    shortMessage?: string
+    message?: string
+    cause?: { reason?: string; shortMessage?: string; message?: string }
+  }
+  const raw =
+    e.shortMessage ||
+    e.cause?.shortMessage ||
+    e.cause?.reason ||
+    e.cause?.message ||
+    e.message ||
+    'Transaction failed'
+  if (/rejected|denied|user rejected|user denied|cancel/i.test(raw)) {
+    return 'Transaction rejected in wallet'
+  }
+  if (/insufficient funds|insufficient balance/i.test(raw)) {
+    return 'Insufficient funds for gas or amount'
+  }
+  if (/network|rpc|fetch|timeout/i.test(raw)) {
+    return 'Network / RPC error — try again'
+  }
+  return raw.slice(0, 140)
+}
+
 export function useAssetPool() {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
-  const { switchChain, isPending: isSwitching } = useSwitchChain()
+  const { switchChain, isPending: isSwitching, error: switchError } = useSwitchChain()
   const onSepolia = chainId === CHAIN_ID
   const enabled = isConnected && !!address && onSepolia
 
@@ -64,7 +90,7 @@ export function useAssetPool() {
     args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled },
   })
 
-  const { data: usdcBalance, refetch: refetchUsdc } = useReadContract({
+  const { data: usdcBalance, refetch: refetchUsdc, isLoading: isLoadingUsdc } = useReadContract({
     address: CONTRACTS.usdc, abi: ERC20_ABI, functionName: 'balanceOf',
     args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled },
   })
@@ -72,7 +98,7 @@ export function useAssetPool() {
     address: CONTRACTS.usdc, abi: ERC20_ABI, functionName: 'allowance',
     args: address ? [address, CONTRACTS.assetPool] : undefined, chainId: CHAIN_ID, query: { enabled },
   })
-  const { data: userShares, refetch: refetchShares } = useReadContract({
+  const { data: userShares, refetch: refetchShares, isLoading: isLoadingShares } = useReadContract({
     address: CONTRACTS.shareToken, abi: ERC20_ABI, functionName: 'balanceOf',
     args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled },
   })
@@ -98,15 +124,43 @@ export function useAssetPool() {
     args: address ? [address] : undefined, chainId: CHAIN_ID, query: { enabled },
   })
 
-  const { writeContract: approveWrite, data: approveHash, isPending: isApproving, reset: resetApprove } = useWriteContract()
-  const { writeContract: depositWrite, data: depositHash, isPending: isDepositing, reset: resetDeposit } = useWriteContract()
-  const { writeContract: withdrawWrite, data: withdrawHash, isPending: isWithdrawing, reset: resetWithdraw } = useWriteContract()
-  const { writeContract: registerWrite, data: registerHash, isPending: isRegistering, reset: resetRegister } = useWriteContract()
+  const {
+    writeContract: approveWrite,
+    data: approveHash,
+    isPending: isApproving,
+    error: approveError,
+    reset: resetApprove,
+  } = useWriteContract()
+  const {
+    writeContract: depositWrite,
+    data: depositHash,
+    isPending: isDepositing,
+    error: depositError,
+    reset: resetDeposit,
+  } = useWriteContract()
+  const {
+    writeContract: withdrawWrite,
+    data: withdrawHash,
+    isPending: isWithdrawing,
+    error: withdrawError,
+    reset: resetWithdraw,
+  } = useWriteContract()
+  const {
+    writeContract: registerWrite,
+    data: registerHash,
+    isPending: isRegistering,
+    error: registerError,
+    reset: resetRegister,
+  } = useWriteContract()
 
-  const { isLoading: isConfirmingApprove, isSuccess: isApproved } = useWaitForTransactionReceipt({ hash: approveHash })
-  const { isLoading: isConfirmingDeposit, isSuccess: isDeposited } = useWaitForTransactionReceipt({ hash: depositHash })
-  const { isLoading: isConfirmingWithdraw, isSuccess: isWithdrawn } = useWaitForTransactionReceipt({ hash: withdrawHash })
-  const { isLoading: isConfirmingRegister, isSuccess: isRegistered } = useWaitForTransactionReceipt({ hash: registerHash })
+  const { isLoading: isConfirmingApprove, isSuccess: isApproved } =
+    useWaitForTransactionReceipt({ hash: approveHash })
+  const { isLoading: isConfirmingDeposit, isSuccess: isDeposited } =
+    useWaitForTransactionReceipt({ hash: depositHash })
+  const { isLoading: isConfirmingWithdraw, isSuccess: isWithdrawn } =
+    useWaitForTransactionReceipt({ hash: withdrawHash })
+  const { isLoading: isConfirmingRegister, isSuccess: isRegistered } =
+    useWaitForTransactionReceipt({ hash: registerHash })
 
   const refetchAll = async () => {
     await Promise.all([
@@ -118,35 +172,76 @@ export function useAssetPool() {
 
   const approve = (amount: string) => {
     approveWrite({
-      address: CONTRACTS.usdc, abi: ERC20_ABI, functionName: 'approve',
-      args: [CONTRACTS.assetPool, parseUnits(amount || '0', USDC_DECIMALS)], chainId: CHAIN_ID,
+      address: CONTRACTS.usdc,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [CONTRACTS.assetPool, parseUnits(amount || '0', USDC_DECIMALS)],
+      chainId: CHAIN_ID,
     })
   }
   const deposit = (amount: string, referrer: `0x${string}` = zeroAddress) => {
     depositWrite({
-      address: CONTRACTS.assetPool, abi: ASSET_POOL_ABI, functionName: 'deposit',
-      args: [parseUnits(amount || '0', USDC_DECIMALS), referrer], chainId: CHAIN_ID,
+      address: CONTRACTS.assetPool,
+      abi: ASSET_POOL_ABI,
+      functionName: 'deposit',
+      args: [parseUnits(amount || '0', USDC_DECIMALS), referrer],
+      chainId: CHAIN_ID,
     })
   }
   const withdraw = (shareAmount: string) => {
     withdrawWrite({
-      address: CONTRACTS.assetPool, abi: ASSET_POOL_ABI, functionName: 'withdraw',
-      args: [parseUnits(shareAmount || '0', SHARE_DECIMALS)], chainId: CHAIN_ID,
+      address: CONTRACTS.assetPool,
+      abi: ASSET_POOL_ABI,
+      functionName: 'withdraw',
+      args: [parseUnits(shareAmount || '0', SHARE_DECIMALS)],
+      chainId: CHAIN_ID,
     })
   }
   const registerReferral = (referrer: `0x${string}`) => {
     registerWrite({
-      address: CONTRACTS.referralRegistry, abi: REFERRAL_REGISTRY_ABI, functionName: 'registerReferral',
-      args: [referrer], chainId: CHAIN_ID,
+      address: CONTRACTS.referralRegistry,
+      abi: REFERRAL_REGISTRY_ABI,
+      functionName: 'registerReferral',
+      args: [referrer],
+      chainId: CHAIN_ID,
     })
   }
 
   const needsApproval = (amount: string) => {
     if (!amount || allowance === undefined) return true
-    try { return allowance < parseUnits(amount, USDC_DECIMALS) } catch { return true }
+    try {
+      return allowance < parseUnits(amount, USDC_DECIMALS)
+    } catch {
+      return true
+    }
   }
 
-  const toN = (v: bigint | undefined) => (v === undefined ? 0 : Number(formatUnits(v, USDC_DECIMALS)))
+  /** true if amount exceeds wallet USDC */
+  const exceedsUsdcBalance = (amount: string) => {
+    if (!amount) return false
+    try {
+      const n = parseFloat(amount)
+      if (!(n > 0)) return false
+      return n > balance + 1e-12
+    } catch {
+      return true
+    }
+  }
+
+  /** true if share amount exceeds GOLD balance */
+  const exceedsShareBalance = (shareAmount: string) => {
+    if (!shareAmount) return false
+    try {
+      const n = parseFloat(shareAmount)
+      if (!(n > 0)) return false
+      return n > shares + 1e-12
+    } catch {
+      return true
+    }
+  }
+
+  const toN = (v: bigint | undefined) =>
+    v === undefined ? 0 : Number(formatUnits(v, USDC_DECIMALS))
   const balance = toN(usdcBalance)
   const shares = toN(userShares)
   const sharePrice = toN(pricePerShare) || 1
@@ -155,44 +250,161 @@ export function useAssetPool() {
   const totalPayoutWeight = toN(totalPayoutWeightRaw)
   const positionCount = positionCountRaw !== undefined ? Number(positionCountRaw) : 0
   const multiplierBps = multBps !== undefined ? Number(multBps) : 10000
-  const boostLabel = multiplierBps >= 100000 ? '10×' : multiplierBps >= 50000 ? '5×' : '1×'
-  const boostPct = multiplierBps >= 100000 ? '+1,000%' : multiplierBps >= 50000 ? '+500%' : 'No Boost'
+  const boostLabel =
+    multiplierBps >= 100000 ? '10×' : multiplierBps >= 50000 ? '5×' : '1×'
+  const boostPct =
+    multiplierBps >= 100000
+      ? '+1,000%'
+      : multiplierBps >= 50000
+        ? '+500%'
+        : 'No Boost'
   const depositFee = depositFeeBps !== undefined ? Number(depositFeeBps) : 100
   const withdrawFee = withdrawFeeBps !== undefined ? Number(withdrawFeeBps) : 100
   const portfolioValue = shares * sharePrice
   const yieldActive = !!yieldAdapter && yieldAdapter !== zeroAddress
   const hasReferrer = !!myReferrer && myReferrer !== zeroAddress
   const isBusy =
-    isApproving || isDepositing || isWithdrawing || isRegistering ||
-    isConfirmingApprove || isConfirmingDeposit || isConfirmingWithdraw || isConfirmingRegister
+    isApproving ||
+    isDepositing ||
+    isWithdrawing ||
+    isRegistering ||
+    isConfirmingApprove ||
+    isConfirmingDeposit ||
+    isConfirmingWithdraw ||
+    isConfirmingRegister
 
-  return useMemo(() => ({
-    isConnected, address, chainId, onSepolia, isSwitching,
-    switchToSepolia: () => switchChain?.({ chainId: CHAIN_ID }),
-    balance, shares, sharePrice, tvl, portfolioValue,
-    payoutWeight, totalPayoutWeight, positionCount,
-    multiplierBps, boostLabel, boostPct,
-    isReferred: !!isReferred, isReferrer: !!isReferrerStatus,
-    referralCount: refCount !== undefined ? Number(refCount) : 0,
-    myReferrer: hasReferrer ? myReferrer : null,
-    hasReferrer,
-    depositFee, withdrawFee, paused: !!isPaused, yieldActive,
-    needsApproval, approve, deposit, withdraw, registerReferral,
-    isBusy,
-    isApproving: isApproving || isConfirmingApprove,
-    isDepositing: isDepositing || isConfirmingDeposit,
-    isWithdrawing: isWithdrawing || isConfirmingWithdraw,
-    isRegistering: isRegistering || isConfirmingRegister,
-    isApproved, isDeposited, isWithdrawn, isRegistered,
-    resetApprove, resetDeposit, resetWithdraw, resetRegister,
-    refetchAll, refetchAllowance,
-  }), [
-    isConnected, address, chainId, onSepolia, isSwitching, balance, shares, sharePrice, tvl, portfolioValue,
-    payoutWeight, totalPayoutWeight, positionCount, multiplierBps, boostLabel, boostPct,
-    isReferred, isReferrerStatus, refCount, myReferrer, hasReferrer,
-    depositFee, withdrawFee, isPaused, yieldActive, isBusy,
-    isApproving, isConfirmingApprove, isDepositing, isConfirmingDeposit,
-    isWithdrawing, isConfirmingWithdraw, isRegistering, isConfirmingRegister,
-    isApproved, isDeposited, isWithdrawn, isRegistered, allowance,
-  ])
+  const writeErrorMsg =
+    shortError(approveError) !== 'Transaction failed' && approveError
+      ? shortError(approveError)
+      : depositError
+        ? shortError(depositError)
+        : withdrawError
+          ? shortError(withdrawError)
+          : registerError
+            ? shortError(registerError)
+            : switchError
+              ? shortError(switchError)
+              : null
+
+  // Prefer the active error among writes
+  const activeWriteError =
+    (approveError && shortError(approveError)) ||
+    (depositError && shortError(depositError)) ||
+    (withdrawError && shortError(withdrawError)) ||
+    (registerError && shortError(registerError)) ||
+    (switchError && shortError(switchError)) ||
+    null
+
+  return useMemo(
+    () => ({
+      isConnected,
+      address,
+      chainId,
+      onSepolia,
+      isSwitching,
+      switchToSepolia: () => switchChain?.({ chainId: CHAIN_ID }),
+      balance,
+      shares,
+      sharePrice,
+      tvl,
+      portfolioValue,
+      payoutWeight,
+      totalPayoutWeight,
+      positionCount,
+      multiplierBps,
+      boostLabel,
+      boostPct,
+      isReferred: !!isReferred,
+      isReferrer: !!isReferrerStatus,
+      referralCount: refCount !== undefined ? Number(refCount) : 0,
+      myReferrer: hasReferrer ? myReferrer : null,
+      hasReferrer,
+      depositFee,
+      withdrawFee,
+      paused: !!isPaused,
+      yieldActive,
+      needsApproval,
+      exceedsUsdcBalance,
+      exceedsShareBalance,
+      approve,
+      deposit,
+      withdraw,
+      registerReferral,
+      isBusy,
+      isApproving: isApproving || isConfirmingApprove,
+      isDepositing: isDepositing || isConfirmingDeposit,
+      isWithdrawing: isWithdrawing || isConfirmingWithdraw,
+      isRegistering: isRegistering || isConfirmingRegister,
+      isApproved,
+      isDeposited,
+      isWithdrawn,
+      isRegistered,
+      isLoadingBalances: isLoadingUsdc || isLoadingShares,
+      writeError: activeWriteError,
+      clearWriteErrors: () => {
+        resetApprove()
+        resetDeposit()
+        resetWithdraw()
+        resetRegister()
+      },
+      resetApprove,
+      resetDeposit,
+      resetWithdraw,
+      resetRegister,
+      refetchAll,
+      refetchAllowance,
+      approveHash,
+      depositHash,
+      withdrawHash,
+      registerHash,
+    }),
+    [
+      isConnected,
+      address,
+      chainId,
+      onSepolia,
+      isSwitching,
+      balance,
+      shares,
+      sharePrice,
+      tvl,
+      portfolioValue,
+      payoutWeight,
+      totalPayoutWeight,
+      positionCount,
+      multiplierBps,
+      boostLabel,
+      boostPct,
+      isReferred,
+      isReferrerStatus,
+      refCount,
+      myReferrer,
+      hasReferrer,
+      depositFee,
+      withdrawFee,
+      isPaused,
+      yieldActive,
+      isBusy,
+      isApproving,
+      isConfirmingApprove,
+      isDepositing,
+      isConfirmingDeposit,
+      isWithdrawing,
+      isConfirmingWithdraw,
+      isRegistering,
+      isConfirmingRegister,
+      isApproved,
+      isDeposited,
+      isWithdrawn,
+      isRegistered,
+      isLoadingUsdc,
+      isLoadingShares,
+      allowance,
+      activeWriteError,
+      approveHash,
+      depositHash,
+      withdrawHash,
+      registerHash,
+    ]
+  )
 }
