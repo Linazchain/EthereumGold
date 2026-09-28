@@ -2,14 +2,23 @@
 
 import React, { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { WagmiProvider, createConfig, http } from 'wagmi'
-import { avalancheFuji, baseSepolia, hardhat, mainnet, sepolia } from 'wagmi/chains'
+import { WagmiProvider, createConfig, http, fallback } from 'wagmi'
+import { sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 4_000,
+      refetchOnWindowFocus: true,
+      retry: 2,
+    },
+  },
+})
 
+/** Sepolia-only — matches deployed Liquid Yield contracts */
 export const config = createConfig({
-  chains: [avalancheFuji, baseSepolia, sepolia, hardhat, mainnet],
+  chains: [sepolia],
   connectors: [
     injected({
       shimDisconnect: true,
@@ -17,11 +26,22 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [avalancheFuji.id]: http('https://api.avax-test.network/ext/bc/C/rpc'),
-    [baseSepolia.id]: http('https://sepolia.base.org'),
-    [sepolia.id]: http(),
-    [hardhat.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: fallback([
+      http('https://ethereum-sepolia-rpc.publicnode.com', {
+        batch: true,
+        retryCount: 3,
+        timeout: 12_000,
+      }),
+      http('https://rpc.sepolia.org', {
+        batch: true,
+        retryCount: 2,
+        timeout: 12_000,
+      }),
+      http('https://1rpc.io/sepolia', {
+        retryCount: 1,
+        timeout: 12_000,
+      }),
+    ]),
   },
   ssr: true,
 })
@@ -37,7 +57,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           children
         ) : (
           <div className="min-h-screen bg-black flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </QueryClientProvider>
